@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from ..ops.squeeze_excitation import SqueezeExcitation 
 from ..transforms._presets import ImageClassification
 from ..utils import _log_api_usage_once
 from ._api import register_model, Weights, WeightsEnum
@@ -27,6 +28,7 @@ __all__ = [
     "resnet18",
     "resnet34",
     "resnet50",
+    "se_resnet50",
     "resnet101",
     "resnet152",
     "resnext50_32x4d",
@@ -161,12 +163,53 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         return out
+    
+class SEBottleneck(Bottleneck):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
+        # in bottleneck blocks, last block layer has "expansion" times the planes of the first block layer
+        self.se = SqueezeExcitation(planes * self.expansion, 16)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = super().forward(x)
+        x = self.se(x) # use squeeze and excitation after the last block layer
+        return x
+    
+class SEBasicBlock(BasicBlock):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
+        self.se = SqueezeExcitation(planes, 16)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = super().forward(x)
+        x = self.se(x) # use squeeze and excitation after the last block layer
+        return x
 
 
 class ResNet(nn.Module):
     def __init__(
         self,
-        block: Type[Union[BasicBlock, Bottleneck]],
+        block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck]],
         layers: List[int],
         num_classes: int = 1000,
         zero_init_residual: bool = False,
@@ -286,7 +329,7 @@ class ResNet(nn.Module):
 
 
 def _resnet(
-    block: Type[Union[BasicBlock, Bottleneck]],
+    block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck]],
     layers: List[int],
     weights: Optional[WeightsEnum],
     progress: bool,
@@ -761,6 +804,12 @@ def resnet50(*, weights: Optional[ResNet50_Weights] = None, progress: bool = Tru
     weights = ResNet50_Weights.verify(weights)
 
     return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+
+@register_model()
+@handle_legacy_interface()
+def se_resnet50(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
+
+    return _resnet(SEBottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
 @register_model()

@@ -7,7 +7,7 @@ class SqueezeExcitation(nn.Module):
 
     Args:
         in_channels (int): Number of channels of the input tensor
-        reduced_channels (int): Number of channels of the intermediate tensor. Default: 1
+        reduction_ratio (int): Reduction ratio for the squeeze step. Default: 16
         act_layer (nn.Module): Activation layer. Default: nn.ReLU
         gate_layer (nn.Module): Gate layer. Default: nn.Sigmoid
 
@@ -20,16 +20,16 @@ class SqueezeExcitation(nn.Module):
     def __init__(
         self,
         in_channels: int,
-        reduced_channels: int = 1,
+        reduction_ratio: int = 16,
         act_layer: nn.Module = nn.ReLU,
         gate_layer: nn.Module = nn.Sigmoid,
     ) -> None:
         super(SqueezeExcitation, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(in_channels, reduced_channels, bias=True),
+            nn.Linear(in_channels, in_channels // reduction_ratio, bias=True),
             act_layer(inplace=True),
-            nn.Linear(reduced_channels, in_channels, bias=True),
+            nn.Linear(in_channels // reduction_ratio, in_channels, bias=True),
             gate_layer(),
         )
 
