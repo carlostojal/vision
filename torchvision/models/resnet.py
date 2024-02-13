@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..ops.squeeze_excitation import SqueezeExcitation 
+from ..ops.cbam import ConvolutionalBlockAttentionModule
 from ..transforms._presets import ImageClassification
 from ..utils import _log_api_usage_once
 from ._api import register_model, Weights, WeightsEnum
@@ -29,6 +30,7 @@ __all__ = [
     "resnet34",
     "resnet50",
     "se_resnet50",
+    "cbam_resnet50",
     "resnet101",
     "resnet152",
     "resnext50_32x4d",
@@ -183,6 +185,26 @@ class SEBottleneck(Bottleneck):
     def forward(self, x: Tensor) -> Tensor:
         x = super().forward(x)
         x = self.se(x) # use squeeze and excitation after the last block layer
+        return x
+    
+class CBAMBottleneck(Bottleneck):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
+        self.cbam = ConvolutionalBlockAttentionModule(planes * self.expansion)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = super().forward(x)
+        x = self.cbam(x) # use convolutional block attention after the last block layer
         return x
     
 class SEBasicBlock(BasicBlock):
@@ -810,6 +832,12 @@ def resnet50(*, weights: Optional[ResNet50_Weights] = None, progress: bool = Tru
 def se_resnet50(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
 
     return _resnet(SEBottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+
+@register_model()
+@handle_legacy_interface()
+def cbam_resnet50(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
+
+    return _resnet(CBAMBottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
 @register_model()
