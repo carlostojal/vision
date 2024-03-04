@@ -1,7 +1,9 @@
+from typing import Any
 import torch
 from torch import nn
 from torchvision.models import resnet50, se_resnet50, cbam_resnet50
-from ._api import register_model, handle_legacy_interface
+from ._api import register_model
+from ._utils import handle_legacy_interface
 
 __all__ = [
     "resnet50_unet",
@@ -15,7 +17,7 @@ class ResNetUNet(nn.Module):
         resnet: nn.Module, # resnet encoder to use,
         attention: nn.Module = None, # attention module to use on the decoder
     ) -> None:
-        super.__init__()
+        super().__init__()
 
         self.resnet = resnet
 
@@ -45,7 +47,7 @@ class ResNetUNet(nn.Module):
         x = self.final_conv(x)
 
     # make a decoder block
-    def make_decoder_block(in_channels: int, out_channels: int, attention: nn.Module = None) -> nn.Module:
+    def make_decoder_block(self, in_channels: int, out_channels: int, attention: nn.Module = None) -> nn.Module:
         block = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2), # 2x2 upsampling
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1), # 3x3 conv
@@ -62,18 +64,18 @@ class ResNetUNet(nn.Module):
 # register the models
 @register_model()
 @handle_legacy_interface()
-def resnet50_unet() -> ResNetUNet:
+def resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetUNet:
     resnet = resnet50()
     return ResNetUNet(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def se_resnet50_unet() -> ResNetUNet:
+def se_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetUNet:
     resnet = se_resnet50()
     return ResNetUNet(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def cbam_resnet50_unet() -> ResNetUNet:
+def cbam_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetUNet:
     resnet = cbam_resnet50()
     return ResNetUNet(resnet)
