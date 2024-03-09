@@ -1,4 +1,5 @@
 from torch import nn, Tensor, cat
+import torch
 
 class ConvolutionalBlockAttentionModule(nn.Module):
     """
@@ -22,38 +23,40 @@ class ConvolutionalBlockAttentionModule(nn.Module):
         in_channels: int,
         reduction_ratio: int = 16,
         act_layer: nn.Module = nn.ReLU,
-        gate_layer: nn.Module = nn.Sigmoid,
+        gate_layer: nn.Module = nn.Sigmoid
     ) -> None:
         super(ConvolutionalBlockAttentionModule, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.fc1 = nn.Sequential(
-            nn.Linear(in_channels, in_channels // reduction_ratio, bias=True),
+        self.avg_pool = nn.AdaptiveAvgPool2d(1) # channel average pooling
+        self.max_pool = nn.AdaptiveMaxPool2d(1) # channel max pooling
+        self.fc = nn.Sequential(
+            nn.Linear(in_channels, in_channels // reduction_ratio, bias=False), # W0
             act_layer(inplace=True),
-            nn.Linear(in_channels // reduction_ratio, in_channels, bias=True),
+            nn.Linear(in_channels // reduction_ratio, in_channels, bias=False), # W1
         )
-        self.gate_layer = gate_layer(),
-        self.conv1 = nn.Conv2d(2, 1, kernel_size=7, stride=1, padding=3, bias=False)
+        self.gate_layer = gate_layer()
+        self.conv = nn.Conv2d(2, 1, kernel_size=7, stride=1, padding=3, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
+
         b, c, _, _ = x.size()
 
-        max = self.max_pool(x).view(b, c) # global max pooling
-        avg = self.avg_pool(x).view(b, c) # global average pooling
+        max = self.max_pool(x).view(b, c) # max pooling
+        avg = self.avg_pool(x).view(b, c) # average pooling
 
         # channel attention
-        max = self.fc1(max).view(b, c, 1, 1)
-        avg = self.fc1(avg).view(b, c, 1, 1)
-        mc = self.gate_layer(max.expand_as(x) + avg.expand_as(x))
+        max = self.fc(max).view(b, c, 1, 1) # apply fully connected layer (W0, W1)
+        avg = self.fc(avg).view(b, c, 1, 1) # apply fully connected layer (W0, W1)
+        mc = self.gate_layer(max + avg)
 
         # apply channel attention to the input tensor
-        x = x * mc.expand_as(x)
+        x1 = x * mc.expand_as(x)
 
         # spatial attention
-        max_s = self.max_pool(x)
-        avg_s = self.avg_pool(x)
+        max_s, _ = torch.max(x, dim=1, keepdim=True)
+        avg_s = torch.mean(x, dim=1, keepdim=True)
+
         pool_s = cat([max_s, avg_s], dim=1) # concatenate the two tensors
-        ms = self.gate_layer(self.conv1(pool_s)) # apply convolutional layer
+        ms = self.gate_layer(self.conv(pool_s)) # apply convolutional layer
 
         # apply spatial attention
-        return x * ms.expand_as(x)
+        return x1 * ms
