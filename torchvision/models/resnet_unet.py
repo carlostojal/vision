@@ -8,13 +8,17 @@ from ._utils import handle_legacy_interface
 __all__ = [
     "resnet50_unet",
     "se_resnet50_unet",
-    "cbam_resnet50_unet"
+    "cbam_resnet50_unet",
+    "resnet50_ae",
+    "se_resnet50_ae",
+    "cbam_resnet50_ae"
 ]
 
-class ResNetUNet(nn.Module):
+class ResNetAutoEncoder(nn.Module):
     def __init__(
         self,
         resnet: nn.Module, # resnet encoder to use,
+        with_residuals: bool = False, # whether to use residual connections from the encoder to the decoder
         attention: nn.Module = None, # attention module to use on the decoder
     ) -> None:
         super().__init__()
@@ -31,8 +35,29 @@ class ResNetUNet(nn.Module):
         # 1x1 convolution to obtain the final mask
         self.final_conv = nn.Conv2d(64, 1, kernel_size=1)
 
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        
+        if self.with_residuals:
+            return self.forward_unet(x)
+        else:
+            return self.forward_ae(x)
+    
+    def forward_ae(self, x: torch.Tensor) -> torch.Tensor:
+        l1, l2, l3, l4 = self.resnet(x)
+
+        # without residual connections from the encoder to the decoder
+        x = self.decoder1(l4)
+        x = self.decoder2(x)
+        x = self.decoder3(x)
+        x = self.decoder4(x)
+        x = self.decoder5(x)
+
+        # obtain the final mask
+        x = self.final_conv(x)
+
+        return x
+
+    def forward_unet(self, x: torch.Tensor) -> torch.Tensor:
 
         # use the encoder, obtaining four feature maps of different sizes
         l1, l2, l3, l4 = self.resnet(x)
@@ -68,18 +93,36 @@ class ResNetUNet(nn.Module):
 # register the models
 @register_model()
 @handle_legacy_interface()
-def resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetUNet:
+def resnet50_ae(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
     resnet = resnet50()
-    return ResNetUNet(resnet)
+    return ResNetAutoEncoder(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def se_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetUNet:
+def se_resnet50_ae(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
     resnet = se_resnet50()
-    return ResNetUNet(resnet)
+    return ResNetAutoEncoder(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def cbam_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetUNet:
+def cbam_resnet50_ae(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
     resnet = cbam_resnet50()
-    return ResNetUNet(resnet)
+    return ResNetAutoEncoder(resnet)
+
+@register_model()
+@handle_legacy_interface()
+def resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = resnet50()
+    return ResNetAutoEncoder(resnet, with_residuals=True)
+
+@register_model()
+@handle_legacy_interface()
+def se_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = se_resnet50()
+    return ResNetAutoEncoder(resnet, with_residuals=True)
+
+@register_model()
+@handle_legacy_interface()
+def cbam_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = cbam_resnet50()
+    return ResNetAutoEncoder(resnet, with_residuals=True)
