@@ -31,8 +31,8 @@ class ConvolutionalBlockAttentionModule(nn.Module):
             nn.Linear(in_channels, in_channels // reduction_ratio, bias=True),
             act_layer(inplace=True),
             nn.Linear(in_channels // reduction_ratio, in_channels, bias=True),
-            gate_layer(),
         )
+        self.gate_layer = gate_layer(),
         self.conv1 = nn.Conv2d(2, 1, kernel_size=7, stride=1, padding=3, bias=False)
 
     def forward(self, x: Tensor) -> Tensor:
