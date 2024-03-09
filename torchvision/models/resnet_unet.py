@@ -26,6 +26,7 @@ class ResNetUNet(nn.Module):
         self.decoder2 = self.make_decoder_block(1024, 512, attention)
         self.decoder3 = self.make_decoder_block(512, 256, attention)
         self.decoder4 = self.make_decoder_block(256, 64, attention)
+        self.decoder5 = self.make_decoder_block(64, 64, attention)
 
         # 1x1 convolution to obtain the final mask
         self.final_conv = nn.Conv2d(64, 1, kernel_size=1)
@@ -42,15 +43,18 @@ class ResNetUNet(nn.Module):
         x = self.decoder2(x + l3)
         x = self.decoder3(x + l2)
         x = self.decoder4(x + l1)
+        x = self.decoder5(x)
 
         # obtain the final mask
         x = self.final_conv(x)
+
+        return x
 
     # make a decoder block
     def make_decoder_block(self, in_channels: int, out_channels: int, attention: nn.Module = None) -> nn.Module:
         block = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2), # 2x2 upsampling
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1), # 3x3 conv
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1), # 3x3 conv
             nn.BatchNorm2d(out_channels), # batch normalization
             nn.ReLU()
         )
