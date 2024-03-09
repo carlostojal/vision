@@ -25,6 +25,8 @@ class ResNetAutoEncoder(nn.Module):
 
         self.resnet = resnet
 
+        self.with_residuals = with_residuals
+
         #  define four decoder blocks, one for each feature map
         self.decoder1 = self.make_decoder_block(2048, 1024, attention)
         self.decoder2 = self.make_decoder_block(1024, 512, attention)
@@ -43,7 +45,7 @@ class ResNetAutoEncoder(nn.Module):
             return self.forward_ae(x)
     
     def forward_ae(self, x: torch.Tensor) -> torch.Tensor:
-        l1, l2, l3, l4 = self.resnet(x)
+        _, _, _, l4 = self.resnet(x)
 
         # without residual connections from the encoder to the decoder
         x = self.decoder1(l4)
