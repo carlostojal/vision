@@ -127,6 +127,7 @@ class QuantizableResNet(ResNet):
 def _resnet(
     block: Type[Union[QuantizableBasicBlock, QuantizableBottleneck]],
     layers: List[int],
+    in_channels: int,
     weights: Optional[WeightsEnum],
     progress: bool,
     quantize: bool,
@@ -138,7 +139,7 @@ def _resnet(
             _ovewrite_named_param(kwargs, "backend", weights.meta["backend"])
     backend = kwargs.pop("backend", "fbgemm")
 
-    model = QuantizableResNet(block, layers, **kwargs)
+    model = QuantizableResNet(block, layers, in_channels, **kwargs)
     _replace_relu(model)
     if quantize:
         quantize_model(model, backend)
@@ -291,6 +292,7 @@ class ResNeXt101_64X4D_QuantizedWeights(WeightsEnum):
 )
 def resnet18(
     *,
+    in_channels: int = 3,
     weights: Optional[Union[ResNet18_QuantizedWeights, ResNet18_Weights]] = None,
     progress: bool = True,
     quantize: bool = False,
@@ -327,7 +329,7 @@ def resnet18(
     """
     weights = (ResNet18_QuantizedWeights if quantize else ResNet18_Weights).verify(weights)
 
-    return _resnet(QuantizableBasicBlock, [2, 2, 2, 2], weights, progress, quantize, **kwargs)
+    return _resnet(QuantizableBasicBlock, [2, 2, 2, 2], in_channels, weights, progress, quantize, **kwargs)
 
 
 @register_model(name="quantized_resnet50")
@@ -341,6 +343,7 @@ def resnet18(
 )
 def resnet50(
     *,
+    in_channels: int = 3,
     weights: Optional[Union[ResNet50_QuantizedWeights, ResNet50_Weights]] = None,
     progress: bool = True,
     quantize: bool = False,
@@ -377,7 +380,7 @@ def resnet50(
     """
     weights = (ResNet50_QuantizedWeights if quantize else ResNet50_Weights).verify(weights)
 
-    return _resnet(QuantizableBottleneck, [3, 4, 6, 3], weights, progress, quantize, **kwargs)
+    return _resnet(QuantizableBottleneck, [3, 4, 6, 3], in_channels, weights, progress, quantize, **kwargs)
 
 
 @register_model(name="quantized_resnext101_32x8d")
@@ -391,6 +394,7 @@ def resnet50(
 )
 def resnext101_32x8d(
     *,
+    in_channels: int = 3,
     weights: Optional[Union[ResNeXt101_32X8D_QuantizedWeights, ResNeXt101_32X8D_Weights]] = None,
     progress: bool = True,
     quantize: bool = False,
@@ -429,7 +433,7 @@ def resnext101_32x8d(
 
     _ovewrite_named_param(kwargs, "groups", 32)
     _ovewrite_named_param(kwargs, "width_per_group", 8)
-    return _resnet(QuantizableBottleneck, [3, 4, 23, 3], weights, progress, quantize, **kwargs)
+    return _resnet(QuantizableBottleneck, [3, 4, 23, 3], in_channels, weights, progress, quantize, **kwargs)
 
 
 @register_model(name="quantized_resnext101_64x4d")
@@ -443,6 +447,7 @@ def resnext101_32x8d(
 )
 def resnext101_64x4d(
     *,
+    in_channels: int = 3,
     weights: Optional[Union[ResNeXt101_64X4D_QuantizedWeights, ResNeXt101_64X4D_Weights]] = None,
     progress: bool = True,
     quantize: bool = False,
@@ -481,4 +486,4 @@ def resnext101_64x4d(
 
     _ovewrite_named_param(kwargs, "groups", 64)
     _ovewrite_named_param(kwargs, "width_per_group", 4)
-    return _resnet(QuantizableBottleneck, [3, 4, 23, 3], weights, progress, quantize, **kwargs)
+    return _resnet(QuantizableBottleneck, [3, 4, 23, 3], in_channels, weights, progress, quantize, **kwargs)

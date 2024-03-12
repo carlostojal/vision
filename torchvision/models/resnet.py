@@ -234,6 +234,7 @@ class ResNet(nn.Module):
         block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck]],
         layers: List[int],
         num_classes: int = 1000,
+        in_channels: int = 3,
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
@@ -245,6 +246,8 @@ class ResNet(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
+
+        self.in_channels = in_channels
 
         self.inplanes = 64
         self.dilation = 1
@@ -260,7 +263,7 @@ class ResNet(nn.Module):
         self.groups = groups
         self.base_width = width_per_group
         # TOJAL WARNING: input channels were changed to 4 to work with RGB-D images
-        self.conv1 = nn.Conv2d(4, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(self.in_channels, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -348,6 +351,7 @@ class ResNet(nn.Module):
 def _resnet(
     block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck]],
     layers: List[int],
+    in_channels: int,
     weights: Optional[WeightsEnum],
     progress: bool,
     **kwargs: Any,
@@ -355,7 +359,7 @@ def _resnet(
     if weights is not None:
         _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
 
-    model = ResNet(block, layers, **kwargs)
+    model = ResNet(block, layers, in_channels=in_channels, **kwargs)
 
     if weights is not None:
         model.load_state_dict(weights.get_state_dict(progress=progress, check_hash=True))
@@ -741,7 +745,7 @@ class Wide_ResNet101_2_Weights(WeightsEnum):
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
-def resnet18(*, weights: Optional[ResNet18_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def resnet18(*, in_channels: int = 3, weights: Optional[ResNet18_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-18 from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`__.
 
     Args:
@@ -762,12 +766,12 @@ def resnet18(*, weights: Optional[ResNet18_Weights] = None, progress: bool = Tru
     """
     weights = ResNet18_Weights.verify(weights)
 
-    return _resnet(BasicBlock, [2, 2, 2, 2], weights, progress, **kwargs)
+    return _resnet(BasicBlock, [2, 2, 2, 2], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet34_Weights.IMAGENET1K_V1))
-def resnet34(*, weights: Optional[ResNet34_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def resnet34(*, in_channels: int = 3, weights: Optional[ResNet34_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-34 from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`__.
 
     Args:
@@ -788,12 +792,12 @@ def resnet34(*, weights: Optional[ResNet34_Weights] = None, progress: bool = Tru
     """
     weights = ResNet34_Weights.verify(weights)
 
-    return _resnet(BasicBlock, [3, 4, 6, 3], weights, progress, **kwargs)
+    return _resnet(BasicBlock, [3, 4, 6, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet50_Weights.IMAGENET1K_V1))
-def resnet50(*, weights: Optional[ResNet50_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def resnet50(*, in_channels: int = 3, weights: Optional[ResNet50_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-50 from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`__.
 
     .. note::
@@ -820,24 +824,24 @@ def resnet50(*, weights: Optional[ResNet50_Weights] = None, progress: bool = Tru
     """
     weights = ResNet50_Weights.verify(weights)
 
-    return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 6, 3], in_channels, weights, progress, **kwargs)
 
 @register_model()
 @handle_legacy_interface()
-def se_resnet50(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def se_resnet50(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
 
-    return _resnet(SEBottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+    return _resnet(SEBottleneck, [3, 4, 6, 3], in_channels, weights, progress, **kwargs)
 
 @register_model()
 @handle_legacy_interface()
-def cbam_resnet50(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def cbam_resnet50(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNet:
 
-    return _resnet(CBAMBottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+    return _resnet(CBAMBottleneck, [3, 4, 6, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet101_Weights.IMAGENET1K_V1))
-def resnet101(*, weights: Optional[ResNet101_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def resnet101(*, in_channels: int = 3, weights: Optional[ResNet101_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-101 from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`__.
 
     .. note::
@@ -864,12 +868,12 @@ def resnet101(*, weights: Optional[ResNet101_Weights] = None, progress: bool = T
     """
     weights = ResNet101_Weights.verify(weights)
 
-    return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 23, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet152_Weights.IMAGENET1K_V1))
-def resnet152(*, weights: Optional[ResNet152_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
+def resnet152(*, in_channels: int = 3, weights: Optional[ResNet152_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-152 from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`__.
 
     .. note::
@@ -896,13 +900,13 @@ def resnet152(*, weights: Optional[ResNet152_Weights] = None, progress: bool = T
     """
     weights = ResNet152_Weights.verify(weights)
 
-    return _resnet(Bottleneck, [3, 8, 36, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 8, 36, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNeXt50_32X4D_Weights.IMAGENET1K_V1))
 def resnext50_32x4d(
-    *, weights: Optional[ResNeXt50_32X4D_Weights] = None, progress: bool = True, **kwargs: Any
+    *, in_channels: int = 3, weights: Optional[ResNeXt50_32X4D_Weights] = None, progress: bool = True, **kwargs: Any
 ) -> ResNet:
     """ResNeXt-50 32x4d model from
     `Aggregated Residual Transformation for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_.
@@ -926,13 +930,13 @@ def resnext50_32x4d(
 
     _ovewrite_named_param(kwargs, "groups", 32)
     _ovewrite_named_param(kwargs, "width_per_group", 4)
-    return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 6, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNeXt101_32X8D_Weights.IMAGENET1K_V1))
 def resnext101_32x8d(
-    *, weights: Optional[ResNeXt101_32X8D_Weights] = None, progress: bool = True, **kwargs: Any
+    *, in_channels: int = 3, weights: Optional[ResNeXt101_32X8D_Weights] = None, progress: bool = True, **kwargs: Any
 ) -> ResNet:
     """ResNeXt-101 32x8d model from
     `Aggregated Residual Transformation for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_.
@@ -956,13 +960,13 @@ def resnext101_32x8d(
 
     _ovewrite_named_param(kwargs, "groups", 32)
     _ovewrite_named_param(kwargs, "width_per_group", 8)
-    return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 23, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNeXt101_64X4D_Weights.IMAGENET1K_V1))
 def resnext101_64x4d(
-    *, weights: Optional[ResNeXt101_64X4D_Weights] = None, progress: bool = True, **kwargs: Any
+    *, in_channels: int = 3, weights: Optional[ResNeXt101_64X4D_Weights] = None, progress: bool = True, **kwargs: Any
 ) -> ResNet:
     """ResNeXt-101 64x4d model from
     `Aggregated Residual Transformation for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_.
@@ -986,13 +990,13 @@ def resnext101_64x4d(
 
     _ovewrite_named_param(kwargs, "groups", 64)
     _ovewrite_named_param(kwargs, "width_per_group", 4)
-    return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 23, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", Wide_ResNet50_2_Weights.IMAGENET1K_V1))
 def wide_resnet50_2(
-    *, weights: Optional[Wide_ResNet50_2_Weights] = None, progress: bool = True, **kwargs: Any
+    *, in_channels: int = 3, weights: Optional[Wide_ResNet50_2_Weights] = None, progress: bool = True, **kwargs: Any
 ) -> ResNet:
     """Wide ResNet-50-2 model from
     `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_.
@@ -1020,13 +1024,13 @@ def wide_resnet50_2(
     weights = Wide_ResNet50_2_Weights.verify(weights)
 
     _ovewrite_named_param(kwargs, "width_per_group", 64 * 2)
-    return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 6, 3], in_channels, weights, progress, **kwargs)
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", Wide_ResNet101_2_Weights.IMAGENET1K_V1))
 def wide_resnet101_2(
-    *, weights: Optional[Wide_ResNet101_2_Weights] = None, progress: bool = True, **kwargs: Any
+    *, in_channels: int = 3, weights: Optional[Wide_ResNet101_2_Weights] = None, progress: bool = True, **kwargs: Any
 ) -> ResNet:
     """Wide ResNet-101-2 model from
     `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_.
@@ -1054,4 +1058,4 @@ def wide_resnet101_2(
     weights = Wide_ResNet101_2_Weights.verify(weights)
 
     _ovewrite_named_param(kwargs, "width_per_group", 64 * 2)
-    return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
+    return _resnet(Bottleneck, [3, 4, 23, 3], in_channels, weights, progress, **kwargs)

@@ -95,36 +95,36 @@ class ResNetAutoEncoder(nn.Module):
 # register the models
 @register_model()
 @handle_legacy_interface()
-def resnet50_ae(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
-    resnet = resnet50()
+def resnet50_ae(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = resnet50(in_channels=in_channels)
     return ResNetAutoEncoder(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def se_resnet50_ae(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
-    resnet = se_resnet50()
+def se_resnet50_ae(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = se_resnet50(in_channels=in_channels)
     return ResNetAutoEncoder(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def cbam_resnet50_ae(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
-    resnet = cbam_resnet50()
+def cbam_resnet50_ae(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = cbam_resnet50(in_channels=in_channels)
     return ResNetAutoEncoder(resnet)
 
 @register_model()
 @handle_legacy_interface()
-def resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
-    resnet = resnet50()
+def resnet50_unet(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = resnet50(in_channels=in_channels)
     return ResNetAutoEncoder(resnet, with_residuals=True)
 
 @register_model()
 @handle_legacy_interface()
-def se_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
-    resnet = se_resnet50()
+def se_resnet50_unet(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = se_resnet50(in_channels=in_channels)
     return ResNetAutoEncoder(resnet, with_residuals=True)
 
 @register_model()
 @handle_legacy_interface()
-def cbam_resnet50_unet(*, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
-    resnet = cbam_resnet50()
+def cbam_resnet50_unet(*, in_channels: int = 3, weights = None, progress: bool = True, **kwargs: Any) -> ResNetAutoEncoder:
+    resnet = cbam_resnet50(in_channels=in_channels)
     return ResNetAutoEncoder(resnet, with_residuals=True)
