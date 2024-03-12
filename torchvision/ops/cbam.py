@@ -52,8 +52,8 @@ class ConvolutionalBlockAttentionModule(nn.Module):
         x1 = x * mc.expand_as(x)
 
         # spatial attention
-        max_s, _ = torch.max(x, dim=1, keepdim=True)
-        avg_s = torch.mean(x, dim=1, keepdim=True)
+        max_s, _ = torch.max(x1, dim=1, keepdim=True)
+        avg_s = torch.mean(x1, dim=1, keepdim=True)
 
         pool_s = cat([max_s, avg_s], dim=1) # concatenate the two tensors
         ms = self.gate_layer(self.conv(pool_s)) # apply convolutional layer
