@@ -107,6 +107,78 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
 
         return out
+    
+class SEBasicBlock(BasicBlock):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
+        self.se = SqueezeExcitation(planes, 16)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        # apply squeeze and excitation to the last block layer
+        out = self.se(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+    
+class CBAMBasicBlock(BasicBlock):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
+        self.cbam = ConvolutionalBlockAttentionModule(planes)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        # apply squeeze and excitation to the last block layer
+        out = self.cbam(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
 
 
 class Bottleneck(nn.Module):
@@ -183,9 +255,30 @@ class SEBottleneck(Bottleneck):
         self.se = SqueezeExcitation(planes * self.expansion, 16)
 
     def forward(self, x: Tensor) -> Tensor:
-        x = super().forward(x)
-        x = self.se(x) # use squeeze and excitation after the last block layer
-        return x
+
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        # apply squeeze and excitation to the last block layer
+        out = self.se(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
     
 class CBAMBottleneck(Bottleneck):
     def __init__(
@@ -203,35 +296,35 @@ class CBAMBottleneck(Bottleneck):
         self.cbam = ConvolutionalBlockAttentionModule(planes * self.expansion)
 
     def forward(self, x: Tensor) -> Tensor:
-        x = super().forward(x)
-        x = self.cbam(x) # use convolutional block attention after the last block layer
-        return x
-    
-class SEBasicBlock(BasicBlock):
-    def __init__(
-        self,
-        inplanes: int,
-        planes: int,
-        stride: int = 1,
-        downsample: Optional[nn.Module] = None,
-        groups: int = 1,
-        base_width: int = 64,
-        dilation: int = 1,
-        norm_layer: Optional[Callable[..., nn.Module]] = None,
-    ) -> None:
-        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
-        self.se = SqueezeExcitation(planes, 16)
+        identity = x
 
-    def forward(self, x: Tensor) -> Tensor:
-        x = super().forward(x)
-        x = self.se(x) # use squeeze and excitation after the last block layer
-        return x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        # apply squeeze and excitation to the last block layer
+        out = self.cbam(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
 
 
 class ResNet(nn.Module):
     def __init__(
         self,
-        block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck]],
+        block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck, CBAMBasicBlock, CBAMBottleneck]],
         layers: List[int],
         num_classes: int = 1000,
         in_channels: int = 3,
@@ -349,7 +442,7 @@ class ResNet(nn.Module):
 
 
 def _resnet(
-    block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck]],
+    block: Type[Union[BasicBlock, Bottleneck, SEBasicBlock, SEBottleneck, CBAMBasicBlock, CBAMBottleneck]],
     layers: List[int],
     in_channels: int,
     weights: Optional[WeightsEnum],
