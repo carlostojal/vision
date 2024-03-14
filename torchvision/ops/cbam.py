@@ -38,20 +38,27 @@ class ConvolutionalBlockAttentionModule(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
 
-        b, c, _, _ = x.size()
+        max = self.max_pool(x) # max pooling
+        avg = self.avg_pool(x) # average pooling
 
-        max = self.max_pool(x).view(b, c) # max pooling
-        avg = self.avg_pool(x).view(b, c) # average pooling
+        # reshape to (C)
+        max = max.squeeze()
+        avg = avg.squeeze()
 
         # channel attention
-        max = self.fc(max).view(b, c, 1, 1) # apply fully connected layer (W0, W1)
-        avg = self.fc(avg).view(b, c, 1, 1) # apply fully connected layer (W0, W1)
+        max = self.fc(max) # apply fully connected layer (W0, W1)
+        avg = self.fc(avg) # apply fully connected layer (W0, W1)
         mc = self.gate_layer(max + avg)
 
+        # reshape to (BxCx1x1)
+        mc = mc.unsqueeze(0).unsqueeze(2).unsqueeze(3)
+
         # apply channel attention to the input tensor
-        x1 = x * mc.expand_as(x)
+        # (BxCxHxW) * (BxCx1x1)
+        x1 = x * mc
 
         # spatial attention
+        # (Bx1xHxW) - reduce dimension 1
         max_s, _ = torch.max(x1, dim=1, keepdim=True)
         avg_s = torch.mean(x1, dim=1, keepdim=True)
 
