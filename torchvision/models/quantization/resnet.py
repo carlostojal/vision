@@ -6,7 +6,11 @@ import torch.nn as nn
 from torch import Tensor
 from torchvision.models.resnet import (
     BasicBlock,
+    SEBasicBlock,
+    CBAMBasicBlock,
     Bottleneck,
+    SEBottleneck,
+    CBAMBottleneck,
     ResNet,
     ResNet18_Weights,
     ResNet50_Weights,
@@ -29,6 +33,8 @@ __all__ = [
     "ResNeXt101_64X4D_QuantizedWeights",
     "resnet18",
     "resnet50",
+    "se_resnet50",
+    "cbam_resnet50",
     "resnext101_32x8d",
     "resnext101_64x4d",
 ]
@@ -94,6 +100,74 @@ class QuantizableBottleneck(Bottleneck):
         if self.downsample:
             _fuse_modules(self.downsample, ["0", "1"], is_qat, inplace=True)
 
+class QuantizableSEBottleneck(SEBottleneck):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.skip_add_relu = nn.quantized.FloatFunctional()
+        self.relu1 = nn.ReLU(inplace=False)
+        self.relu2 = nn.ReLU(inplace=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu2(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        out = self.se(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+        out = self.skip_add_relu.add_relu(out, identity)
+
+        return out
+
+    def fuse_model(self, is_qat: Optional[bool] = None) -> None:
+        _fuse_modules(
+            self, [["conv1", "bn1", "relu1"], ["conv2", "bn2", "relu2"], ["conv3", "bn3"]], is_qat, inplace=True
+        )
+        if self.downsample:
+            _fuse_modules(self.downsample, ["0", "1"], is_qat, inplace=True)
+
+class QuantizableCBAMBottleneck(CBAMBottleneck):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.skip_add_relu = nn.quantized.FloatFunctional()
+        self.relu1 = nn.ReLU(inplace=False)
+        self.relu2 = nn.ReLU(inplace=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu2(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        out = self.cbam(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+        out = self.skip_add_relu.add_relu(out, identity)
+
+        return out
+
+    def fuse_model(self, is_qat: Optional[bool] = None) -> None:
+        _fuse_modules(
+            self, [["conv1", "bn1", "relu1"], ["conv2", "bn2", "relu2"], ["conv3", "bn3"]], is_qat, inplace=True
+        )
+        if self.downsample:
+            _fuse_modules(self.downsample, ["0", "1"], is_qat, inplace=True)
+
 
 class QuantizableResNet(ResNet):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -102,14 +176,20 @@ class QuantizableResNet(ResNet):
         self.quant = torch.ao.quantization.QuantStub()
         self.dequant = torch.ao.quantization.DeQuantStub()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         x = self.quant(x)
         # Ensure scriptability
         # super(QuantizableResNet,self).forward(x)
         # is not scriptable
-        x = self._forward_impl(x)
-        x = self.dequant(x)
-        return x
+        l1, l2, l3, l4 = self._forward_impl(x)
+
+        # dequantize feature maps
+        l1 = self.dequant(l1)
+        l2 = self.dequant(l2)
+        l3 = self.dequant(l3)
+        l4 = self.dequant(l4)
+
+        return l1, l2, l3, l4
 
     def fuse_model(self, is_qat: Optional[bool] = None) -> None:
         r"""Fuse conv/bn/relu modules in resnet models
