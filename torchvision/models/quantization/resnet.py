@@ -462,6 +462,31 @@ def resnet50(
 
     return _resnet(QuantizableBottleneck, [3, 4, 6, 3], in_channels, weights, progress, quantize, **kwargs)
 
+@register_model(name="quantized_se_resnet50")
+def se_resnet50(
+    *,
+    in_channels: int = 3,
+    weights: Optional[Weights] = None,
+    progress: bool = True,
+    quantize: bool = False,
+    **kwargs: Any,
+) -> QuantizableResNet:
+    
+    return _resnet(QuantizableSEBottleneck, [3, 4, 6, 3], in_channels, weights, progress, quantize, **kwargs)
+
+
+@register_model(name="quantized_cbam_resnet50")
+def cbam_resnet50(
+    *,
+    in_channels: int = 3,
+    weights: Optional[Weights] = None,
+    progress: bool = True,
+    quantize: bool = False,
+    **kwargs: Any,
+) -> QuantizableResNet:
+    
+    return _resnet(QuantizableCBAMBottleneck, [3, 4, 6, 3], in_channels, weights, progress, quantize, **kwargs)
+
 
 @register_model(name="quantized_resnext101_32x8d")
 @handle_legacy_interface(
